@@ -15,6 +15,8 @@ namespace http
         int startServer();
         void startListen();
         void acceptConnection(int &connSock);
+        void handleConnection(int &connSock);
+        void sendResponse();
 
     private:
         int servSock;
