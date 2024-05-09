@@ -23,7 +23,7 @@ namespace http
         ThreadPool *pool;
 
     private:
-        std::vector<std::string> friendServers;
+        std::vector<std::string> allyServers;
         int servSock;
         int servPort;
         struct sockaddr_in servSockAddr;

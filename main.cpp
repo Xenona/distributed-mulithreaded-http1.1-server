@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include "threadPool.h"
+#include "nftables.h"
 
 using namespace std;
 
@@ -52,9 +53,13 @@ int main()
     cout << "Enter current subserver ip: " << endl;
     cin >> servIp;
 
+    vector<string> allyServers = getServerIps("serverIpList.txt", servIp);
+    if (setLoadBalancer(allyServers)) erroredExit("Couldn't set up nftables");
+
     ThreadPool *pool = new ThreadPool(4);
 
-    Server server = Server(getServerIps("serverIpList.txt", servIp), servIp, 8081, pool);
+    Server server = Server(allyServers, servIp, 8081, pool);
+
 
     HttpServer httpserver = HttpServer(server, servIp, 8080);
     httpserver.startListen();

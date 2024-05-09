@@ -1,6 +1,0 @@
-class BalancedServer {
-    BalancedServer();
-    ~BalancedServer();
-
-    
-}

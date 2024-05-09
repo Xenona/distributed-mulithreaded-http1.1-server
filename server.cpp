@@ -10,7 +10,7 @@ using namespace std;
 namespace http
 {
 
-    Server::Server(vector<string> ips, string servIp, int port, ThreadPool *pool) : servPort(port), servSockAddrLen(sizeof(servSockAddr)), friendServers(ips), pool(pool)
+    Server::Server(vector<string> ips, string servIp, int port, ThreadPool *pool) : servPort(port), servSockAddrLen(sizeof(servSockAddr)), allyServers(ips), pool(pool)
     {
         for (string &ip : ips)
         {

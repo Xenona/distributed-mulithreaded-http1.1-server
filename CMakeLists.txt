@@ -15,9 +15,10 @@ server.cpp
 httpServer.cpp
 threadPool.cpp
 utils.cpp
+nftables.cpp
 )
 
-target_link_libraries(http-servers Threads::Threads)
+target_link_libraries(http-servers Threads::Threads /usr/lib/libnftables.so.1.1.0)
 target_include_directories(http-servers PRIVATE .)
 
 set(SOURCE_FILE ${CMAKE_SOURCE_DIR}/serverIpList.txt)
