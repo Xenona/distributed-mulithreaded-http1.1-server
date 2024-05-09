@@ -2,6 +2,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <sstream>
+#include "threadPool.h"
 
 using namespace std;
 
@@ -21,10 +22,10 @@ namespace
     }
 
 }
-
 namespace http
 {
-    TcpServer::TcpServer(vector<string> ips, string servIp, int port) : servPort(port), servSockAddrLen(sizeof(servSockAddr))
+
+    TcpServer::TcpServer(vector<string> ips, string servIp, int port, ThreadPool *pool) : servPort(port), servSockAddrLen(sizeof(servSockAddr)), friendServers(ips), pool(pool)
     {
 
         servSockAddr.sin_family = AF_INET;
@@ -35,11 +36,17 @@ namespace http
         if (servSock < 0)
             erroredExit("Couldn't open a socket");
 
+        const int enable = 1;
+        if (setsockopt(servSock, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
+            erroredExit("Couldn't set SO_REUSEADDR");
+        }
+
+        if (setsockopt(servSock, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int)) < 0) {
+            erroredExit("Couldn't set SO_REUSEPORT");
+        }
+
         if (bind(servSock, (sockaddr *)&servSockAddr, servSockAddrLen) < 0)
             erroredExit("Couldn't bind the socket to address");
-    
-        
-
     }
 
     TcpServer::~TcpServer()
@@ -58,13 +65,21 @@ namespace http
 
         while (true)
         {
-            acceptConnection(connSock);
 
-            handleConnection(connSock);
+            connSock = acceptConnection();
+            // thread thr(&TcpServer::handleUserConnection, this, ref(connSock));
+
+            pool->enqueueTask([this]
+                              {
+                                  cout << "HIIIIIIIIIIII" << endl;
+                                  thread thr(&TcpServer::handleUserConnection, this, ref(connSock));
+
+                                  thr.join();
+                                  cout << "BYEEEEEEEEEEEE" << endl; });
         }
     }
 
-    void TcpServer::handleConnection(int &connSock)
+    void TcpServer::handleUserConnection(int &connSock)
     {
         fd_set sock;
         FD_ZERO(&sock);
@@ -104,12 +119,14 @@ namespace http
         }
     }
 
-    void TcpServer::acceptConnection(int &connSock)
+    int TcpServer::acceptConnection()
     {
-        connSock = accept(servSock, (sockaddr *)&servSockAddr, &servSockAddrLen);
+        int connSock = accept(servSock, (sockaddr *)&servSockAddr, &servSockAddrLen);
 
         if (connSock < 0)
             erroredExit("Could not accept connection");
+
+        return connSock;
     }
 
     void TcpServer::sendResponse()

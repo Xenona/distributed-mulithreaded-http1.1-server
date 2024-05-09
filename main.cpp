@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include "threadPool.h"
 
 using namespace std;
 
@@ -22,6 +23,10 @@ vector<string> getServerIps(string filename, string myIp)
     return ips;
 }
 
+void foo() {
+    cout << "llalala" << endl;
+}
+
 int main()
 {
     using namespace http;
@@ -31,7 +36,9 @@ int main()
     cout << "Enter current subserver ip: " << endl;
     cin >> servIp;
 
-    TcpServer server = TcpServer(getServerIps("serverIpList.txt", servIp), servIp, 8080);
+    ThreadPool* pool = new ThreadPool(4);
+
+    TcpServer server = TcpServer(getServerIps("serverIpList.txt", servIp), servIp, 8080, pool);
     server.startListen();
 
     return 0;
