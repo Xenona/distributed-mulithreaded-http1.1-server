@@ -31,7 +31,15 @@ namespace http
         servSockAddr.sin_port = htons(port);
         servSockAddr.sin_addr.s_addr = inet_addr(servIp.c_str());
 
-        startServer();
+        servSock = socket(AF_INET, SOCK_STREAM, 0);
+        if (servSock < 0)
+            erroredExit("Couldn't open a socket");
+
+        if (bind(servSock, (sockaddr *)&servSockAddr, servSockAddrLen) < 0)
+            erroredExit("Couldn't bind the socket to address");
+    
+        
+
     }
 
     TcpServer::~TcpServer()
@@ -39,18 +47,6 @@ namespace http
         close(servSock);
         close(connSock);
         exit(0);
-    }
-
-    int TcpServer::startServer()
-    {
-        servSock = socket(AF_INET, SOCK_STREAM, 0);
-        if (servSock < 0)
-            erroredExit("Couldn't open a socket");
-
-        if (bind(servSock, (sockaddr *)&servSockAddr, servSockAddrLen) < 0)
-            erroredExit("Couldn't bind the socket to address");
-
-        return 0;
     }
 
     void TcpServer::startListen()
@@ -97,7 +93,7 @@ namespace http
                 close(connSock);
                 break;
             }
-            else
+            else // bytesRecieved > 0
             {
                 string str(buffer);
 
@@ -128,7 +124,7 @@ namespace http
         bytesSent = write(connSock, ss.str().c_str(), ss.str().size());
 
         if (bytesSent == ss.str().size())
-            log("Sent the response");
+            log("Sent the response successfully");
         else
             log("Error sending response to client");
     }

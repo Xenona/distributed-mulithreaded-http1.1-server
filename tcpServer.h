@@ -12,7 +12,6 @@ namespace http
     public:
         TcpServer(std::vector<std::string> ips, std::string servIp, int port);
         ~TcpServer();
-        int startServer();
         void startListen();
         void acceptConnection(int &connSock);
         void handleConnection(int &connSock);
