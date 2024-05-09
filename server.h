@@ -10,23 +10,23 @@ namespace http
 
     class ThreadPool;
 
-    class TcpServer
+    class Server
     {
     public:
-        TcpServer(std::vector<std::string> ips, std::string servIp, int port, ThreadPool* pool);
-        ~TcpServer();
+        Server(std::vector<std::string> ips, std::string servIp, int port, ThreadPool *pool);
+        ~Server();
         void startListen();
         int acceptConnection();
         void handleUserConnection(int &connSock);
-        void sendResponse();
+        void sendResponse(int &connSock);
+        static int runSocket(std::string servIp, int port, sockaddr_in &servSockAddr, unsigned int &servSockAddrLen);
+        ThreadPool *pool;
 
     private:
         std::vector<std::string> friendServers;
         int servSock;
         int servPort;
-        int connSock;
         struct sockaddr_in servSockAddr;
         unsigned int servSockAddrLen;
-        ThreadPool* pool;
     };
 }

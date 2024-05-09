@@ -11,9 +11,22 @@ find_package(Threads REQUIRED)
 
 add_executable(http-servers 
 main.cpp
-tcpServer.cpp
+server.cpp
+httpServer.cpp
 threadPool.cpp
+utils.cpp
 )
 
 target_link_libraries(http-servers Threads::Threads)
 target_include_directories(http-servers PRIVATE .)
+
+set(SOURCE_FILE ${CMAKE_SOURCE_DIR}/serverIpList.txt)
+set(DEST_FILE ${CMAKE_CURRENT_BINARY_DIR}/serverIpList.txt)
+
+add_custom_command(
+    TARGET http-servers POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${SOURCE_FILE} ${DEST_FILE}
+    COMMENT "Copying serverIpList.txt to build directory"
+)
+
+add_custom_target(copy_server_ip_list ALL DEPENDS ${DEST_FILE})
