@@ -54,10 +54,9 @@ int main()
     cin >> servIp;
 
     vector<string> allyServers = getServerIps("serverIpList.txt", servIp);
-    if (setLoadBalancer(allyServers)) erroredExit("Couldn't set up nftables");
+    // if (setLoadBalancer(allyServers)) erroredExit("Couldn't set up nftables");
 
     ThreadPool *pool = new ThreadPool(4);
-
     Server server = Server(allyServers, servIp, 8081, pool);
 
 

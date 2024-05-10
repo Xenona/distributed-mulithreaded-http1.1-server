@@ -8,6 +8,13 @@
 namespace http
 {
 
+    enum class SubServerMessage : int
+    {
+        getResourse = 0,
+        sendResourse,
+        resourceSize,
+    };
+
     class ThreadPool;
 
     class Server
@@ -19,7 +26,7 @@ namespace http
         int acceptConnection();
         void handleUserConnection(int &connSock);
         void sendResponse(int &connSock);
-        static int runSocket(std::string servIp, int port, sockaddr_in &servSockAddr, unsigned int &servSockAddrLen);
+        static int runSocket(std::string servIp, int port, sockaddr_in &servSockAddr, unsigned int &servSockAddrLen, __socket_type sockType);
         ThreadPool *pool;
 
     private:
@@ -28,5 +35,7 @@ namespace http
         int servPort;
         struct sockaddr_in servSockAddr;
         unsigned int servSockAddrLen;
+
+        std::string sendMessageAndGetResponce(std::string ip, SubServerMessage message, std::string resourceName);
     };
 }

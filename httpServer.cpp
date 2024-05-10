@@ -10,7 +10,7 @@ namespace http
     HttpServer::HttpServer(Server &serverInstance, std::string servIp, int port) : Server(serverInstance)
     {
         httpServSockAddrLen = sizeof(httpServSockAddr);
-        httpServSock = runSocket(servIp, port, httpServSockAddr, httpServSockAddrLen);
+        httpServSock = runSocket(servIp, port, httpServSockAddr, httpServSockAddrLen, SOCK_STREAM);
     }
 
     HttpServer::~HttpServer()

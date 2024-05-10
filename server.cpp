@@ -4,20 +4,33 @@
 #include <sstream>
 #include "threadPool.h"
 #include "utils.h"
+#include <cstring>
 using namespace std;
 
- 
 namespace http
 {
 
-    Server::Server(vector<string> ips, string servIp, int port, ThreadPool *pool) : servPort(port), servSockAddrLen(sizeof(servSockAddr)), allyServers(ips), pool(pool)
+    Server::Server(vector<string> ips, string servIp, int port, ThreadPool *pool) : servPort(port),
+                                                                                    servSockAddrLen(sizeof(servSockAddr)), allyServers(ips), pool(pool)
     {
+        vector<sockaddr_in> sockAddrs;
         for (string &ip : ips)
         {
             cout << "Friend server ip " << ip << endl;
+            sockaddr_in sockaddr;
+            sockaddr.sin_family = AF_INET;
+            sockaddr.sin_port = htons(port);
+            sockaddr.sin_addr.s_addr = inet_addr(ip.c_str());
+            memset(sockaddr.sin_zero, '\0', sizeof sockaddr.sin_zero);
+            sockAddrs.push_back(sockaddr);
         }
 
-        servSock = runSocket(servIp, port, servSockAddr, servSockAddrLen);
+        servSock = runSocket(servIp, port, servSockAddr, servSockAddrLen, SOCK_DGRAM);
+
+        // connection between servers
+        // http parser
+        // shared resourses
+        // shuffle ips
     }
 
     Server::~Server()
@@ -26,14 +39,22 @@ namespace http
         exit(0);
     }
 
-    int Server::runSocket(string servIp, int port, sockaddr_in &servSockAddr, unsigned int &servSockAddrLen)
+    string Server::sendMessageAndGetResponce(string ip, SubServerMessage message, string resourceName)
+    {
+        // std::ostream msg;
+
+        return "";
+    }
+
+    int Server::runSocket(string servIp, int port, sockaddr_in &servSockAddr, unsigned int &servSockAddrLen, __socket_type sockType)
     {
 
         servSockAddr.sin_family = AF_INET;
         servSockAddr.sin_port = htons(port);
         servSockAddr.sin_addr.s_addr = inet_addr(servIp.c_str());
+        memset(servSockAddr.sin_zero, '\0', sizeof servSockAddr.sin_zero);
 
-        int servSock = socket(AF_INET, SOCK_STREAM, 0);
+        int servSock = socket(AF_INET, sockType, 0);
         if (servSock < 0)
             erroredExit("Couldn't open a socket");
 
@@ -106,6 +127,23 @@ namespace http
             else // bytesRecieved > 0
             {
                 string str(buffer);
+
+                vector<string> lines = splitString("\n", str);
+                vector<string> tokens;
+
+                for (string s : lines)
+                {
+                    vector<string> split = splitString(" ", s);
+                    tokens.insert(tokens.end(), split.begin(), split.end());
+                }
+
+                
+
+                for (string &s : tokens)
+                {
+                    cout << "A" << s << endl;
+
+                }
 
                 log("Recieved content:");
                 log(str);
