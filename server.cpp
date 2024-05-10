@@ -5,6 +5,9 @@
 #include "threadPool.h"
 #include "utils.h"
 #include <cstring>
+#include <sys/stat.h>
+#include <fstream>
+
 using namespace std;
 
 namespace http
@@ -137,17 +140,25 @@ namespace http
                     tokens.insert(tokens.end(), split.begin(), split.end());
                 }
 
-                
+                string method;
+                string url;
 
-                for (string &s : tokens)
+                for (int i = 0; i < tokens.size(); i++)
                 {
-                    cout << "A" << s << endl;
-
+                    string s = tokens[i];
+                    if (s == "GET" || s == "POST" || s == "DELETE" || s == "UPDATE")
+                    {
+                        method = s;
+                        url = tokens[i + 1];
+                        if (url[url.length() - 1] == '/')
+                            url.erase(url.length() - 1);
+                    }
                 }
 
                 log("Recieved content:");
                 log(str);
-                sendResponse(connSock);
+                cout << "METHOD AND URL" << method << url;
+                sendResponse(connSock, method, url);
             }
         }
     }
@@ -162,21 +173,110 @@ namespace http
         return connSock;
     }
 
-    void Server::sendResponse(int &connSock)
+    void Server::sendResponse(int &connSock, const std::string &requestMethod, const std::string &requestURI)
     {
         long bytesSent;
+        std::ostringstream response;
 
-        std::string json = "{\"status\": \"ok\"}";
-        std::ostringstream ss;
-        ss << "HTTP/1.1 200 OK\nContent-Type: text/json\nContent-Length: " << json.size() << "\n\n"
-           << json;
+        if (requestMethod == "GET")
+        {
+            handleFileRequest(response, requestURI);
+        }
+        else if (requestMethod == "POST")
+        {
+            // Handle POST request
+            // Your logic for handling POST requests
+        }
+        else if (requestMethod == "DELETE")
+        {
+            // Handle DELETE request
+            // Your logic for handling DELETE requests
+        }
+        else if (requestMethod == "UPDATE")
+        {
+            // Handle UPDATE request
+            // Your logic for handling UPDATE requests
+        }
+        else
+        {
+            // Unsupported HTTP method
+            response << "HTTP/1.1 405 Method Not Allowed\r\n"
+                     << "Content-Length: 0\r\n"
+                     << "Allow: GET, POST, DELETE, UPDATE\r\n"
+                     << "Connection: close\r\n"
+                     << "\r\n";
+        }
 
-        bytesSent = write(connSock, ss.str().c_str(), ss.str().size());
-
-        if (bytesSent == ss.str().size())
+        bytesSent = write(connSock, response.str().c_str(), response.str().size());
+        if (bytesSent == response.str().size())
             log("Sent the response successfully");
         else
             log("Error sending response to client");
     }
 
+    void Server::handleFileRequest(std::ostringstream &response, const std::string &requestURI)
+    {
+        std::string filePath = "." + requestURI;
+
+        struct stat fileStat;
+        if (stat(filePath.c_str(), &fileStat) == 0 && S_ISREG(fileStat.st_mode))
+        {
+            std::ifstream file(filePath, std::ios::binary);
+            if (file)
+            {
+                std::ostringstream fileContent;
+                fileContent << file.rdbuf();
+                std::string content = fileContent.str();
+                response << "HTTP/1.1 200 OK\r\n"
+                         << "Content-Type: " << getContentType(filePath) << "\r\n"
+                         << "Content-Length: " << content.size() << "\r\n"
+                         << "Last-Modified: " << getLastModifiedTime(filePath) << "\r\n"
+                         << "Connection: close\r\n"
+                         << "\r\n"
+                         << content;
+            }
+        }
+        else
+        {
+            std::string errorMessage = "File not found: " + requestURI;
+            response << "HTTP/1.1 404 Not Found\r\n"
+                     << "Content-Type: text/plain\r\n"
+                     << "Content-Length: " << errorMessage.size() << "\r\n"
+                     << "Connection: close\r\n"
+                     << "\r\n"
+                     << errorMessage;
+        }
+    }
+
+    std::string Server::getContentType(const std::string &fileName)
+    {
+        std::string extension = fileName.substr(fileName.find_last_of('.') + 1);
+        if (extension == "html" || extension == "htm")
+            return "text/html";
+        else if (extension == "txt")
+            return "text/plain";
+        else if (extension == "jpg" || extension == "jpeg")
+            return "image/jpeg";
+        else if (extension == "png")
+            return "image/png";
+        else if (extension == "pdf")
+            return "application/pdf";
+        else
+            return "application/octet-stream";
+    }
+
+    std::string Server::getLastModifiedTime(const std::string &fileName)
+    {
+        struct stat fileStat;
+        if (stat(fileName.c_str(), &fileStat) != 0)
+        {
+            return "";
+        }
+
+        std::time_t lastModifiedTime = fileStat.st_mtime;
+        std::tm *tmPtr = std::gmtime(&lastModifiedTime);
+        char buf[80];
+        std::strftime(buf, 80, "%a, %d %b %Y %H:%M:%S GMT", tmPtr);
+        return buf;
+    }
 }
