@@ -30,10 +30,9 @@ namespace http
 
         servSock = runSocket(servIp, port, servSockAddr, servSockAddrLen, SOCK_DGRAM);
 
+        
         // connection between servers
-        // http parser
         // shared resourses
-        // shuffle ips
     }
 
     Server::~Server()
@@ -158,7 +157,7 @@ namespace http
                 log("Recieved content:");
                 log(str);
                 cout << "METHOD AND URL" << method << url;
-                sendResponse(connSock, method, url);
+                sendResponse(connSock, method, url, tokens);
             }
         }
     }
@@ -173,17 +172,32 @@ namespace http
         return connSock;
     }
 
-    void Server::sendResponse(int &connSock, const std::string &requestMethod, const std::string &requestURI)
+    void Server::sendResponse(int &connSock, const std::string &requestMethod, const std::string &requestURI, vector<string> tokens)
     {
         long bytesSent;
         std::ostringstream response;
 
         if (requestMethod == "GET")
-        {
-            handleFileRequest(response, requestURI);
-        }
+            getFile(response, requestURI);
         else if (requestMethod == "POST")
         {
+
+            int i = 0;
+
+            for (int j = 0; j < tokens.size(); j++)
+            {
+                if (tokens[j] == "")
+                {
+                    if (j + 1 < tokens.size())
+                        i = j + 1;
+                    break;
+                }
+            }
+
+            postFile(response, requestURI, tokens[i]);
+
+            // Prepare the response
+
             // Handle POST request
             // Your logic for handling POST requests
         }
@@ -207,6 +221,9 @@ namespace http
                      << "\r\n";
         }
 
+        cout << "RESP" << endl;
+        cout << "RESPONSE " << response.str() << endl;
+
         bytesSent = write(connSock, response.str().c_str(), response.str().size());
         if (bytesSent == response.str().size())
             log("Sent the response successfully");
@@ -214,7 +231,7 @@ namespace http
             log("Error sending response to client");
     }
 
-    void Server::handleFileRequest(std::ostringstream &response, const std::string &requestURI)
+    void Server::getFile(std::ostringstream &response, const std::string &requestURI)
     {
         std::string filePath = "." + requestURI;
 
@@ -279,4 +296,42 @@ namespace http
         std::strftime(buf, 80, "%a, %d %b %Y %H:%M:%S GMT", tmPtr);
         return buf;
     }
+
+    void Server::postFile(std::ostringstream &response, const std::string &requestURI, const std::string &body)
+    {
+        std::string filePath = "." + requestURI;
+
+        if (filePath.empty())
+        {
+            formErrorResponse(400, "Bad Request", "Filename not found in URI", response);
+            return;
+        }
+        std::ofstream outFile(filePath);
+        if (!outFile.is_open())
+        {
+            formErrorResponse(500, "Internal Server Error", "Error opening an output file", response);
+            return;
+        }
+
+        outFile << body;
+        outFile.close();
+
+        response << "HTTP/1.1 200 OK\r\n"
+                 << "Content-Type: " << getContentType(filePath) << "\r\n"
+                 << "Content-Length: " << 0 << "\r\n"
+                 << "Last-Modified: " << getLastModifiedTime(filePath) << "\r\n"
+                 << "Connection: close\r\n"
+                 << "\r\n";
+    };
+
+    void Server::formErrorResponse(int statusCode, const string &message, const string &statusText, std::ostringstream &response)
+    {
+        response << "HTTP/1.1 " << statusCode << " " << statusText << "\r\n"
+                 << "Content-Type: text/plain\r\n"
+                 << "Content-Length: " << message.size() << "\r\n"
+                 << "Connection: close\r\n"
+                 << "\r\n"
+                 << message;
+    }
+
 }

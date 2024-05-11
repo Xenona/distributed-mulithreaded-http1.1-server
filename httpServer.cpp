@@ -30,14 +30,14 @@ namespace http
             int connSock = acceptConnection();
             pool->enqueueTask([this, &connSock]
                               {
-                cout << "HIIIIIIIIIIII" << endl;
-                thread thr(&Server::handleUserConnection, this, std::ref(connSock));
+                                  // cout << "HIIIIIIIIIIII" << endl;
+                                  thread thr(&Server::handleUserConnection, this, std::ref(connSock));
 
-                thr.join();
-                close(connSock);
+                                  thr.join();
+                                  close(connSock);
 
-
-                cout << "BYEEEEEEEEEEEE" << endl; });
+                                  // cout << "BYEEEEEEEEEEEE" << endl;
+                              });
         }
     }
 
