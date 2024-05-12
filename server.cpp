@@ -7,6 +7,7 @@
 #include <cstring>
 #include <sys/stat.h>
 #include <fstream>
+#include <algorithm>
 
 using namespace std;
 
@@ -16,21 +17,47 @@ namespace http
     Server::Server(vector<string> ips, string servIp, int port, ThreadPool *pool) : servPort(port),
                                                                                     servSockAddrLen(sizeof(servSockAddr)), allyServers(ips), pool(pool)
     {
+
+        servSockAddr.sin_family = AF_INET;
+        servSockAddr.sin_port = htons(port);
+        servSockAddr.sin_addr.s_addr = inet_addr(servIp.c_str());
+        memset(servSockAddr.sin_zero, '\0', sizeof servSockAddr.sin_zero);
+        servSockAddrLen = sizeof(servSockAddr);
+
         vector<sockaddr_in> sockAddrs;
         for (string &ip : ips)
         {
             cout << "Friend server ip " << ip << endl;
             sockaddr_in sockaddr;
             sockaddr.sin_family = AF_INET;
-            sockaddr.sin_port = htons(port);
+            sockaddr.sin_port = htons(8080);
             sockaddr.sin_addr.s_addr = inet_addr(ip.c_str());
             memset(sockaddr.sin_zero, '\0', sizeof sockaddr.sin_zero);
             sockAddrs.push_back(sockaddr);
+
+            int sock = socket(AF_INET, SOCK_STREAM, 0);
+            if (sock < 0)
+                erroredExit("Couldn't open a socket");
+            const int enable = 1;
+            if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0)
+                erroredExit("Couldn't set SO_REUSEADDR");
+
+            if (setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int)) < 0)
+                erroredExit("Couldn't set SO_REUSEPORT");
+
+            int res = connect(sock, (struct sockaddr *)&sockaddr, sizeof(sockaddr));
+            if (res == 0)
+            {
+                cout << "Server connected successfully " << endl;
+                interserverSockets.push_back(sock);
+            }
+            else
+            {
+                cout << "Error: " << errno << endl;
+                // ELIBACC
+            }
         }
 
-        servSock = runSocket(servIp, port, servSockAddr, servSockAddrLen, SOCK_DGRAM);
-
-        
         // connection between servers
         // shared resourses
     }
@@ -50,11 +77,10 @@ namespace http
 
     int Server::runSocket(string servIp, int port, sockaddr_in &servSockAddr, unsigned int &servSockAddrLen, __socket_type sockType)
     {
-
+        memset(&servSockAddr, '\0', sizeof(sockaddr_in));
         servSockAddr.sin_family = AF_INET;
         servSockAddr.sin_port = htons(port);
         servSockAddr.sin_addr.s_addr = inet_addr(servIp.c_str());
-        memset(servSockAddr.sin_zero, '\0', sizeof servSockAddr.sin_zero);
 
         int servSock = socket(AF_INET, sockType, 0);
         if (servSock < 0)
@@ -130,14 +156,7 @@ namespace http
             {
                 string str(buffer);
 
-                vector<string> lines = splitString("\n", str);
-                vector<string> tokens;
-
-                for (string s : lines)
-                {
-                    vector<string> split = splitString(" ", s);
-                    tokens.insert(tokens.end(), split.begin(), split.end());
-                }
+                auto tokens = getReqTokens(str);
 
                 string method;
                 string url;
@@ -178,42 +197,27 @@ namespace http
         std::ostringstream response;
 
         if (requestMethod == "GET")
-            getFile(response, requestURI);
+        {
+
+            getFile(response, requestURI, tokens);
+        }
         else if (requestMethod == "POST")
         {
 
-            int i = 0;
+            string body = getReqBody(tokens);
 
-            for (int j = 0; j < tokens.size(); j++)
-            {
-                if (tokens[j] == "")
-                {
-                    if (j + 1 < tokens.size())
-                        i = j + 1;
-                    break;
-                }
-            }
-
-            postFile(response, requestURI, tokens[i]);
+            postFile(response, requestURI, body);
 
             // Prepare the response
-
-            // Handle POST request
-            // Your logic for handling POST requests
         }
         else if (requestMethod == "DELETE")
         {
-            // Handle DELETE request
-            // Your logic for handling DELETE requests
         }
         else if (requestMethod == "UPDATE")
         {
-            // Handle UPDATE request
-            // Your logic for handling UPDATE requests
         }
         else
         {
-            // Unsupported HTTP method
             response << "HTTP/1.1 405 Method Not Allowed\r\n"
                      << "Content-Length: 0\r\n"
                      << "Allow: GET, POST, DELETE, UPDATE\r\n"
@@ -231,7 +235,7 @@ namespace http
             log("Error sending response to client");
     }
 
-    void Server::getFile(std::ostringstream &response, const std::string &requestURI)
+    void Server::getFile(std::ostringstream &response, const std::string &requestURI, vector<string> tokens)
     {
         std::string filePath = "." + requestURI;
 
@@ -255,13 +259,81 @@ namespace http
         }
         else
         {
-            std::string errorMessage = "File not found: " + requestURI;
-            response << "HTTP/1.1 404 Not Found\r\n"
-                     << "Content-Type: text/plain\r\n"
-                     << "Content-Length: " << errorMessage.size() << "\r\n"
-                     << "Connection: close\r\n"
-                     << "\r\n"
-                     << errorMessage;
+
+            if (std::find(tokens.begin(), tokens.end(), "Internal") != tokens.end())
+            {
+                std::string errorMessage = "File not found: " + requestURI;
+                response << "HTTP/1.1 404 Not Found\r\n"
+                         << "Content-Type: text/plain\r\n"
+                         << "Content-Length: " << errorMessage.size() << "\r\n"
+                         << "Connection: close\r\n"
+                         << "Internal: " << requestURI << "\r\n"
+                         << "\r\n"
+                         << errorMessage;
+            }
+            else
+            {
+                string content = "";
+
+                for (int i = 0; i < interserverSockets.size(); i++)
+                {
+                    std::ostringstream interserverReq;
+
+                    interserverReq << "GET " << requestURI << " HTTP/1.1" << "\r\n"
+                                   << "Content-Type: text/plain" << "\r\n"
+                                   << "Accept: */*" << "\r\n"
+                                   << "Host : " << allyServers[i] << ":8080" << "\r\n"
+                                   << "Connection: keep-alive" << "\r\n"
+                                   << "Internal : hi" << "\r\n\r\n";
+
+                    int bytesSent = write(interserverSockets[i], interserverReq.str().c_str(), interserverReq.str().size());
+                    if (bytesSent == interserverReq.str().size())
+                        log("Sent the response successfully");
+                    else
+                        log("Error sending response to client");
+
+                    char buffer[BUFFER_SIZE] = {'\0'};
+
+                    int bytesRecieved = read(interserverSockets[i], buffer, BUFFER_SIZE);
+
+                    if (bytesRecieved > 0)
+                    {
+
+                        string str(buffer);
+
+                        auto tokens = getReqTokens(str);
+
+                        auto body = getReqBody(tokens);
+
+                        if (body != "")
+                        {
+                            content = body;
+                        }
+                    }
+                }
+
+                if (content != "")
+                {
+                    response << "HTTP/1.1 200 OK\r\n"
+                             << "Content-Type: " << getContentType(filePath) << "\r\n"
+                             << "Content-Length: " << content.size() << "\r\n"
+                             << "Last-Modified: " << getLastModifiedTime(filePath) << "\r\n"
+                             << "Connection: close\r\n"
+                             << "\r\n"
+                             << content;
+                }
+                else
+                {
+                    std::string errorMessage = "File not found: " + requestURI;
+                    response << "HTTP/1.1 404 Not Found\r\n"
+                             << "Content-Type: text/plain\r\n"
+                             << "Content-Length: " << errorMessage.size() << "\r\n"
+                             << "Connection: close\r\n"
+                             << "Internal: " << requestURI << "\r\n"
+                             << "\r\n"
+                             << errorMessage;
+                }
+            }
         }
     }
 

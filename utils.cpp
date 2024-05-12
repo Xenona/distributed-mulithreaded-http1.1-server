@@ -34,3 +34,36 @@ std::vector<std::string> splitString(std::string delimiter, std::string s)
 
     return res;
 }
+
+std::vector<std::string> getReqTokens(std::string str)
+{
+    std::vector<std::string> lines = splitString("\n", str);
+    std::vector<std::string> tokens;
+
+    for (std::string s : lines)
+    {
+        std::vector<std::string> split = splitString(" ", s);
+        tokens.insert(tokens.end(), split.begin(), split.end());
+    }
+
+    return tokens;
+}
+
+std::string getReqBody(std::vector<std::string> tokens)
+{
+    int i = 0;
+
+    for (int j = 0; j < tokens.size(); j++)
+    {
+        if (tokens[j] == "")
+        {
+            if (j + 1 < tokens.size())
+                i = j + 1;
+            break;
+        }
+    }
+
+    if (i == 0) return ""; 
+
+    return tokens[i];
+}

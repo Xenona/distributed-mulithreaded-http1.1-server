@@ -13,6 +13,8 @@ namespace http
         getResourse = 0,
         sendResourse,
         resourceSize,
+        res404
+
     };
 
     class ThreadPool;
@@ -28,6 +30,7 @@ namespace http
         void sendResponse(int &connSock, const std::string &requestMethod, const std::string &requestURI, std::vector<std::string> tokens);
         static int runSocket(std::string servIp, int port, sockaddr_in &servSockAddr, unsigned int &servSockAddrLen, __socket_type sockType);
         ThreadPool *pool;
+        std::vector<int> interserverSockets;
 
     private:
         std::vector<std::string> allyServers;
@@ -35,7 +38,7 @@ namespace http
         int servPort;
         struct sockaddr_in servSockAddr;
         unsigned int servSockAddrLen;
-        void getFile(std::ostringstream &response, const std::string &requestURI);
+        void getFile(std::ostringstream &response, const std::string &requestURI, std::vector<std::string> tokens);
         void postFile(std::ostringstream &response, const std::string &requestURI, const std::string &body);
         std::string getContentType(const std::string &fileName);
         std::string getLastModifiedTime(const std::string &fileName);
