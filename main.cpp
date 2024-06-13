@@ -7,18 +7,16 @@
 #include "threadPool.h"
 #include "nftables.h"
 
-using namespace std;
-
 namespace
 {
     const int BUFFER_SIZE = 32768;
 
-    void log(const string &message)
+    void log(const std::string &message)
     {
-        cout << message << endl;
+        std::cout << message << std::endl;
     }
 
-    void erroredExit(const string &errMessage)
+    void erroredExit(const std::string &errMessage)
     {
         log("ERROR: " + errMessage);
         exit(1);
@@ -26,12 +24,12 @@ namespace
 
 }
 
-vector<string> getServerIps(string filename, string myIp)
+std::vector<std::string> getServerIps(std::string filename, std::string myIp)
 {
-    ifstream ipFiles(filename);
+    std::ifstream ipFiles(filename);
 
-    string ip;
-    vector<string> ips;
+    std::string ip;
+    std::vector<std::string> ips;
 
     while (getline(ipFiles, ip))
     {
@@ -46,21 +44,19 @@ vector<string> getServerIps(string filename, string myIp)
 
 int main()
 {
-    using namespace http;
+    std::string servIp = "";
 
-    string servIp = "";
+    std::cout << "Enter current subserver ip: " << std::endl;
+    std::cin >> servIp;
 
-    cout << "Enter current subserver ip: " << endl;
-    cin >> servIp;
+    std::vector<std::string> allyServers = getServerIps("serverIpList.txt", servIp);
+    if (http::setLoadBalancer(allyServers))
+        erroredExit("Couldn't set up nftables");
 
-    vector<string> allyServers = getServerIps("serverIpList.txt", servIp);
-    // if (setLoadBalancer(allyServers)) erroredExit("Couldn't set up nftables");
+    http::ThreadPool *pool = new http::ThreadPool(4);
+    http::Server server = http::Server(allyServers, servIp, 8081, pool);
 
-    ThreadPool *pool = new ThreadPool(4);
-    Server server = Server(allyServers, servIp, 8081, pool);
-
-
-    HttpServer httpserver = HttpServer(server, servIp, 8080);
+    http::HttpServer httpserver = http::HttpServer(server, servIp, 8080);
     httpserver.startListen();
 
     return 0;

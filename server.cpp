@@ -9,13 +9,11 @@
 #include <fstream>
 #include <algorithm>
 
-using namespace std;
-
 namespace http
 {
 
-    Server::Server(vector<string> ips, string servIp, int port, ThreadPool *pool) : servPort(port),
-                                                                                    servSockAddrLen(sizeof(servSockAddr)), allyServers(ips), pool(pool)
+    Server::Server(std::vector<std::string> ips, std::string servIp, int port, ThreadPool *pool) : servPort(port),
+                                                                                                   servSockAddrLen(sizeof(servSockAddr)), allyServers(ips), pool(pool)
     {
 
         servSockAddr.sin_family = AF_INET;
@@ -24,10 +22,10 @@ namespace http
         memset(servSockAddr.sin_zero, '\0', sizeof servSockAddr.sin_zero);
         servSockAddrLen = sizeof(servSockAddr);
 
-        vector<sockaddr_in> sockAddrs;
-        for (string &ip : ips)
+        std::vector<sockaddr_in> sockAddrs;
+        for (std::string &ip : ips)
         {
-            cout << "Friend server ip " << ip << endl;
+            std::cout << "Friend server ip " << ip << std::endl;
             sockaddr_in sockaddr;
             sockaddr.sin_family = AF_INET;
             sockaddr.sin_port = htons(8080);
@@ -48,18 +46,14 @@ namespace http
             int res = connect(sock, (struct sockaddr *)&sockaddr, sizeof(sockaddr));
             if (res == 0)
             {
-                cout << "Server connected successfully " << endl;
+                std::cout << "Server connected successfully " << std::endl;
                 interserverSockets.push_back(sock);
             }
             else
             {
-                cout << "Error: " << errno << endl;
-                // ELIBACC
+                std::cout << "Error: " << errno << std::endl;
             }
         }
-
-        // connection between servers
-        // shared resourses
     }
 
     Server::~Server()
@@ -68,14 +62,14 @@ namespace http
         exit(0);
     }
 
-    string Server::sendMessageAndGetResponce(string ip, SubServerMessage message, string resourceName)
+    std::string Server::sendMessageAndGetResponce(std::string ip, SubServerMessage message, std::string resourceName)
     {
         // std::ostream msg;
 
         return "";
     }
 
-    int Server::runSocket(string servIp, int port, sockaddr_in &servSockAddr, unsigned int &servSockAddrLen, __socket_type sockType)
+    int Server::runSocket(std::string servIp, int port, sockaddr_in &servSockAddr, unsigned int &servSockAddrLen, __socket_type sockType)
     {
         memset(&servSockAddr, '\0', sizeof(sockaddr_in));
         servSockAddr.sin_family = AF_INET;
@@ -112,14 +106,13 @@ namespace http
             int connSock = acceptConnection();
             pool->enqueueTask([this, &connSock]
                               {
-                cout << "HIIIIIIIIIIII" << endl;
-                thread thr(&Server::handleUserConnection, this, std::ref(connSock));
+                std::cout << "Task enqueued" << std::endl;
+                std::thread thr(&Server::handleUserConnection, this, std::ref(connSock));
 
                 thr.join();
                 close(connSock);
 
-
-                cout << "BYEEEEEEEEEEEE" << endl; });
+                std::cout << "Task completed" << std::endl; });
         }
     }
 
@@ -154,16 +147,16 @@ namespace http
             }
             else // bytesRecieved > 0
             {
-                string str(buffer);
+                std::string str(buffer);
 
                 auto tokens = getReqTokens(str);
 
-                string method;
-                string url;
+                std::string method;
+                std::string url;
 
                 for (int i = 0; i < tokens.size(); i++)
                 {
-                    string s = tokens[i];
+                    std::string s = tokens[i];
                     if (s == "GET" || s == "POST" || s == "DELETE" || s == "UPDATE")
                     {
                         method = s;
@@ -175,7 +168,7 @@ namespace http
 
                 log("Recieved content:");
                 log(str);
-                cout << "METHOD AND URL" << method << url;
+                std::cout << "METHOD AND URL" << method << url;
                 sendResponse(connSock, method, url, tokens);
             }
         }
@@ -191,7 +184,7 @@ namespace http
         return connSock;
     }
 
-    void Server::sendResponse(int &connSock, const std::string &requestMethod, const std::string &requestURI, vector<string> tokens)
+    void Server::sendResponse(int &connSock, const std::string &requestMethod, const std::string &requestURI, std::vector<std::string> tokens)
     {
         long bytesSent;
         std::ostringstream response;
@@ -203,12 +196,8 @@ namespace http
         }
         else if (requestMethod == "POST")
         {
-
-            string body = getReqBody(tokens);
-
+            std::string body = getReqBody(tokens);
             postFile(response, requestURI, body);
-
-            // Prepare the response
         }
         else if (requestMethod == "DELETE")
         {
@@ -225,9 +214,6 @@ namespace http
                      << "\r\n";
         }
 
-        cout << "RESP" << endl;
-        cout << "RESPONSE " << response.str() << endl;
-
         bytesSent = write(connSock, response.str().c_str(), response.str().size());
         if (bytesSent == response.str().size())
             log("Sent the response successfully");
@@ -235,7 +221,7 @@ namespace http
             log("Error sending response to client");
     }
 
-    void Server::getFile(std::ostringstream &response, const std::string &requestURI, vector<string> tokens)
+    void Server::getFile(std::ostringstream &response, const std::string &requestURI, std::vector<std::string> tokens)
     {
         std::string filePath = "." + requestURI;
 
@@ -273,7 +259,7 @@ namespace http
             }
             else
             {
-                string content = "";
+                std::string content = "";
 
                 for (int i = 0; i < interserverSockets.size(); i++)
                 {
@@ -299,7 +285,7 @@ namespace http
                     if (bytesRecieved > 0)
                     {
 
-                        string str(buffer);
+                        std::string str(buffer);
 
                         auto tokens = getReqTokens(str);
 
@@ -396,7 +382,7 @@ namespace http
                  << "\r\n";
     };
 
-    void Server::formErrorResponse(int statusCode, const string &message, const string &statusText, std::ostringstream &response)
+    void Server::formErrorResponse(int statusCode, const std::string &message, const std::string &statusText, std::ostringstream &response)
     {
         response << "HTTP/1.1 " << statusCode << " " << statusText << "\r\n"
                  << "Content-Type: text/plain\r\n"

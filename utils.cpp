@@ -63,7 +63,8 @@ std::string getReqBody(std::vector<std::string> tokens)
         }
     }
 
-    if (i == 0) return ""; 
+    if (i == 0)
+        return "";
 
     return tokens[i];
 }

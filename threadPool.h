@@ -6,8 +6,8 @@
 #include <thread>
 #include <functional>
 
-
-namespace http {
+namespace http
+{
 
     class ThreadPool
     {
@@ -15,7 +15,6 @@ namespace http {
         ThreadPool(size_t numOfThreads);
 
         ~ThreadPool();
-
 
         void enqueueTask(std::function<void()> task);
 

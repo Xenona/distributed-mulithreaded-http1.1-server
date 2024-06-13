@@ -1,2 +1,4 @@
 .vscode
 /build
+move.sh
+.cache

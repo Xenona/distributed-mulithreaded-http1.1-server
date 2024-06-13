@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace http {
+namespace http
+{
     int setLoadBalancer(std::vector<std::string> ips);
 }

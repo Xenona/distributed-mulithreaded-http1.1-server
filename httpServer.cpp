@@ -1,9 +1,6 @@
 #include "httpServer.h"
-#include <iostream>
 #include "utils.h"
 #include "threadPool.h"
-
-using namespace std;
 namespace http
 {
 
@@ -30,13 +27,10 @@ namespace http
             int connSock = acceptConnection();
             pool->enqueueTask([this, &connSock]
                               {
-                                  // cout << "HIIIIIIIIIIII" << endl;
-                                  thread thr(&Server::handleUserConnection, this, std::ref(connSock));
+                                  std::thread thr(&Server::handleUserConnection, this, std::ref(connSock));
 
                                   thr.join();
                                   close(connSock);
-
-                                  // cout << "BYEEEEEEEEEEEE" << endl;
                               });
         }
     }

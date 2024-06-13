@@ -29,5 +29,3 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy ${SOURCE_FILE} ${DEST_FILE}
     COMMENT "Copying serverIpList.txt to build directory"
 )
-
-add_custom_target(copy_server_ip_list ALL DEPENDS ${DEST_FILE})
