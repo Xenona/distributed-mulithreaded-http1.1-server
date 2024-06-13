@@ -42,12 +42,12 @@ std::vector<std::string> getServerIps(std::string filename, std::string myIp)
     return ips;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-    std::string servIp = "";
+    if (argc < 2) 
+        erroredExit("The second argument must be your server's ip");
 
-    std::cout << "Enter current subserver ip: " << std::endl;
-    std::cin >> servIp;
+    std::string servIp = argv[1];
 
     std::vector<std::string> allyServers = getServerIps("serverIpList.txt", servIp);
     if (http::setLoadBalancer(allyServers))
